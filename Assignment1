@@ -1,5 +1,5 @@
 
-----External Stage s3--------------------------------------------
+---- TASK 1 External Stage s3--------------------------------------------
 
 create or replace TABLE HEALTHCAREDB.PATIENTS.PATIENTRECORDS_1 (
 	PATIENTID VARCHAR,
@@ -33,7 +33,10 @@ FROM @patient_stage
 FILE_FORMAT = (FORMAT_NAME = 'my_csv_format');
 
 
----- 
+
+------------------ TASK 2 materialized view-------------------------
+
+
 
 CREATE or replace TABLE patient (
     patient_id INT,
@@ -51,9 +54,6 @@ INSERT INTO patient (patient_id, first_name, last_name, diagnosis, admission_dat
 (3, 'Alice', 'Johnson', 'Bronchitis', '2024-11-15', '2024-11-22', '789 Oak St, Springfield'),
 (4, 'Bob', 'Brown', 'Asthma', '2024-11-18', '2024-11-25', '101 Maple St, Springfield'),
 (5, 'Charlie', 'Davis', 'COVID-19', '2024-11-20', '2024-11-30', '202 Pine St, Springfield');
-
-
-------------------materialized view-------------------------
 
 CREATE or replace  MATERIALIZED VIEW AvgStayByDiagnosis AS
 SELECT diagnosis, AVG(DATEDIFF(DAY, admission_date, discharge_date)) AS
