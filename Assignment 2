@@ -21,7 +21,7 @@ INSERT INTO Staging_PatientRecords (patient_id, first_name, last_name, diagnosis
 
 select * from Staging_PatientRecords ;
 
-create or repleace stream Staging_PatientRecordsStream on table Staging_PatientRecords;
+create or replace stream Staging_PatientRecordsStream on table Staging_PatientRecords;
 
 
 INSERT INTO Staging_PatientRecords (patient_id, first_name, last_name, diagnosis, admission_date, discharge_date, address) VALUES
