@@ -1,0 +1,33 @@
+------------------------------------------- TASK 1 -----------------------------------------------------------
+
+
+
+Create or replace table PatientRecords (customer_name varchar, credit_card varchar, region varchar);
+INSERT INTO PatientRecords values ('C1','1234-5678-9810-1234','AWS_AP_SOUTH_1');
+INSERT INTO PatientRecords values ('C2','5678-9810-1234-4321','AWS_AP_EAST_1');
+
+----creating policy--------
+
+CREATE OR REPLACE ROW ACCESS POLICY region_policy
+AS (row_region STRING) 
+RETURNS BOOLEAN ->
+CURRENT_REGION() = row_region;
+
+
+--before applying policy-----
+
+select * from PatientRecords;
+
+----Applying policy----------------
+
+ALTER TABLE PatientRecords
+ADD ROW ACCESS POLICY region_policy
+ON (region);
+
+
+SELECT CURRENT_REGION(); --AWS_AP_SOUTH_1
+
+select * from PatientRecords;
+
+
+----------------------------------------------------------------------Task 2-------------------------------------------------------------
