@@ -31,3 +31,29 @@ select * from PatientRecords;
 
 
 ----------------------------------------------------------------------Task 2-------------------------------------------------------------
+ CREATE OR REPLACE TABLE PatientRecords (
+ PatientID INT,
+ Name STRING,
+ Diagnosis STRING,
+ AdmissionDate DATE
+ );
+
+ INSERT INTO PatientRecords VALUES
+(1, 'Alice', 'Flu', '2024-11-01'),
+ (2, 'Bob', 'Cold', '2024-11-02'),
+ (3, 'Charlie', 'Asthma', '2024-11-03');
+
+
+-----wait for few seconds--------
+   UPDATE PatientRecords
+ SET Diagnosis = 'Pneumonia'
+ WHERE PatientID = 1;
+
+
+CREATE OR REPLACE TABLE PatientRecordsClone
+CLONE PatientRecords
+AT (OFFSET => -60); 
+
+select * from PatientRecords;
+
+select * from PatientRecordsClone;
