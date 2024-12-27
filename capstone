@@ -1,0 +1,244 @@
+CREATE OR REPLACE TABLE patient_data (
+ patient_id STRING,
+ first_name STRING,
+ last_name STRING,
+ date_of_birth DATE,
+ gender STRING,
+ race STRING,
+ ethnicity STRING,
+ address STRING,
+ city STRING,
+ state STRING,
+ zip_code STRING,
+ insurance_type STRING,
+ primary_care_provider_id STRING,
+ region varchar
+);
+
+CREATE OR REPLACE TABLE medical_events (
+ event_id STRING,
+ patient_id STRING,
+ event_date TIMESTAMP_NTZ,
+ event_type STRING,
+ diagnosis_code STRING,
+ procedure_code STRING,
+ medication_code STRING,
+ provider_id STRING,
+ facility_id STRING,
+ notes STRING
+);
+
+CREATE OR REPLACE TABLE claims_data (
+ claim_id STRING,
+ patient_id STRING,
+ service_date DATE,
+ claim_date DATE,
+ claim_amount FLOAT,
+ claim_status STRING,
+ provider_id STRING,
+ diagnosis_codes ARRAY,
+ procedure_codes ARRAY
+);
+
+
+CREATE OR REPLACE TABLE pharmacy_data (
+ prescription_id STRING,
+ patient_id STRING,
+ medication_code STRING,
+ fill_date DATE,
+ days_supply INT,
+ quantity FLOAT,
+ pharmacy_id STRING
+);
+
+
+CREATE OR REPLACE TABLE provider_data (
+ provider_id STRING,
+ provider_name STRING,
+ specialty STRING,
+ npi_number STRING,
+ facility_id STRING
+);
+
+
+CREATE OR REPLACE TABLE care_gaps (
+ gap_id STRING,
+ patient_id STRING,
+ gap_type STRING,
+ identified_date DATE,
+ status STRING,
+ recommended_action STRING
+);
+
+
+
+
+INSERT INTO patient_data (patient_id, first_name, last_name, date_of_birth, gender, race, ethnicity, address, city, state, zip_code, insurance_type, primary_care_provider_id, region) VALUES
+('PAT001', 'John', 'Smith', '1954-11-17', 'Male', 'Other', 'Hispanic or Latino', '123 Main St', 'New York', 'NY', '10001', 'Private', 'PCP1234', 'AWS_AP_SOUTH_1'),
+('PAT002', 'Jane', 'Johnson', '1953-01-05', 'Female', 'White', 'Hispanic or Latino', '456 Elm St', 'Los Angeles', 'CA', '90001', 'Private', 'PCP5678', 'AWS_AP_EAST_1');
+
+INSERT INTO medical_events (event_id, patient_id, event_date, event_type, diagnosis_code, procedure_code, medication_code, provider_id, facility_id, notes) VALUES
+('EVT1234', 'PAT001', '2024-03-16 20:16:13.231683', 'Surgery', 'D12345', 'P12345', 'M12345', 'PRV1234', 'FAC1234', 'Routine checkup'),
+('EVT5678', 'PAT002', '2024-03-15 20:16:13.231683', 'Checkup', 'D67890', 'P67890', 'M67890', 'PRV5678', 'FAC5678', 'Follow-up visit'),
+('EVT5678', 'PAT002', '2023-03-15 20:16:13.231683', 'Checkup', 'D67890', 'P67890', 'M67890', 'PRV5678', 'FAC5678', 'Follow-up visit'),
+('EVT5678', 'PAT002', '2022-03-15 20:16:13.231683', 'Checkup', 'D67890', 'P67890', 'M67890', 'PRV5678', 'FAC5678', 'Follow-up visit'),
+('EVT5678', 'PAT002', '2021-03-15 20:16:13.231683', 'Checkup', 'D67890', 'P67890', 'M67890', 'PRV5678', 'FAC5678', 'Follow-up visit');
+
+INSERT INTO claims_data (claim_id, patient_id, service_date, claim_date, claim_amount, claim_status, provider_id, diagnosis_codes, procedure_codes) SELECT
+'CLM1234', 'PAT001', '2024-04-27', '2024-10-23', 3041.38, 'Pending', 'PRV1234', ARRAY_CONSTRUCT('D12345', 'D67890'), ARRAY_CONSTRUCT('P12345', 'P67890');
+
+
+INSERT INTO claims_data (claim_id, patient_id, service_date, claim_date, claim_amount, claim_status, provider_id, diagnosis_codes, procedure_codes) SELECT
+'CLM5678', 'PAT002', '2024-01-04', '2024-07-30', 6373.62, 'Denied', 'PRV5678', ARRAY_CONSTRUCT('D54321'), ARRAY_CONSTRUCT('P54321', 'P98765');
+
+
+INSERT INTO pharmacy_data (prescription_id, patient_id, medication_code, fill_date, days_supply, quantity, pharmacy_id) VALUES
+('RX1234', 'PAT001', 'M12345', '2024-04-27', 30, 60.0, 'PHR1234'),
+('RX5678', 'PAT002', 'M67890', '2024-01-04', 90, 90.0, 'PHR5678');
+
+INSERT INTO provider_data (provider_id, provider_name, specialty, npi_number, facility_id) VALUES
+('PRV1234', 'Dr. Alice Williams', 'Cardiology', '1234567890', 'FAC1234'),
+('PRV5678', 'Dr. Bob Brown', 'Dermatology', '0987654321', 'FAC5678');
+
+INSERT INTO care_gaps (gap_id, patient_id, gap_type, identified_date, status, recommended_action) VALUES
+('GAP1234', 'PAT001', 'Preventive Care', '2024-06-22', 'Closed', 'Action 5'),
+('GAP5678', 'PAT002', 'Chronic Disease Management', '2024-12-22', 'Closed', 'Action 3');
+
+----------------------------------------------------------------------------------------------Data ingestion and storage----------------------------------------------------------
+
+--Load Patient Data into Snowflake from aws s3 SNOW pipe
+CREATE OR REPLACE FILE FORMAT my_csv_format TYPE=CSV
+FIELD_OPTIONALLY_ENCLOSED_BY='"'
+SKIP_HEADER=1;
+ 
+SELECT * FROM HealthcareDB.Patients.PatientRecords_1;
+ 
+CREATE OR REPLACE STAGE patient_stage
+URL='s3://client-1-20240910/'
+CREDENTIALS=(AWS_KEY_ID='' AWS_SECRET_KEY='')
+DIRECTORY = (ENABLE = TRUE);
+ 
+ 
+CREATE OR REPLACE PIPE my_pipe
+AS
+COPY INTO patient_data
+FROM @my_s3_stage
+FILE_FORMAT = (FORMAT_NAME = 'my_csv_format');
+
+
+
+
+
+ ----MATERIALIZED View ----------------------------------------
+select * from claims_data;
+ 
+CREATE MATERIALIZED VIEW care_gap_view AS
+SELECT
+    patient_id,
+    event_type,
+    event_date,
+    CASE
+        WHEN DATEDIFF(day, event_date, '2024-12-22') > 365 THEN 'Care Gap'
+        ELSE 'No Care Gap'
+    END AS care_gap_status
+FROM medical_events;
+
+
+
+select * from care_gap_view;
+
+
+
+------------------------------------------------------------------- creating policy ROW level security-----------------------------------------------------------------------
+
+
+----creating policy ROW level security 007--------
+CREATE OR REPLACE ROW ACCESS POLICY region_policy
+AS (row_region STRING) 
+RETURNS BOOLEAN ->
+CURRENT_REGION() = row_region;
+
+
+--before applying policy-----
+
+select * from patient_data;
+
+----Applying policy----------------
+
+ALTER TABLE patient_data
+ADD ROW ACCESS POLICY region_policy
+ON (region);
+
+
+SELECT CURRENT_REGION(); --AWS_AP_SOUTH_1
+
+select * from patient_data;
+
+-----------------------------------------------------------------------------------------------------Monitoring and Alerting-------------------------------------------------------------
+
+
+
+
+
+CREATE OR REPLACE ALERT my_alert
+WAREHOUSE = 'COMPUTE_WH'
+SCHEDULE = 'USING CRON 0 0 * * *' -- Every 24 hour
+AS
+SELECT SYSTEM$SEND_EMAIL(
+    'my_email_integration',
+    'recipient@example.com',
+    'Materialized View Alert',
+    'The materialized view contains the care cap status No Care Gap.'
+)
+FROM care_gap_view
+WHERE status = 'No Care Gap';
+
+CREATE OR REPLACE NOTIFICATION INTEGRATION my_email_integration
+TYPE = EMAIL
+ENABLED = TRUE
+NOTIFICATION_PROVIDER = 'AWS_SES'
+AWS_SES_REGION = 'region'
+AWS_SES_ACCESS_KEY_ID = 'your-access-key-id'
+AWS_SES_SECRET_ACCESS_KEY = 'access-key'
+AWS_SES_FROM_EMAIL_ADDRESS = 'your-email';
+
+
+
+CREATE OR REPLACE TASK my_task
+WAREHOUSE = my_warehouse
+SCHEDULE = 'USING CRON 0 0 * * *' -- Every 24 hours at midnight
+AS
+CALL my_alert();
+
+
+-----------------------------------------------------------------------------------------------------Monitoring, Reporting and Visualization-------------------------------------------------------------
+
+
+----------------------care gap dahsboard 
+
+
+SELECT
+    care_gap_status,
+    COUNT(patient_id) AS patient_count
+FROM care_gap_view
+GROUP BY care_gap_status;
+
+
+-------------------------Query performace dashboard ---- Monitoring
+SELECT 
+    QUERY_ID,
+    EXECUTION_STATUS,
+    START_TIME,
+    END_TIME,
+    TOTAL_ELAPSED_TIME/1000 AS EXECUTION_TIME_SECONDS,
+    USER_NAME,
+    'COMPUTE_WH'
+FROM 
+    SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY
+WHERE 
+    START_TIME >= DATEADD('day', -7, CURRENT_TIMESTAMP())
+    AND DATABASE_NAME = 'CAPSTONE'
+ORDER BY 
+    START_TIME DESC;
+
+
