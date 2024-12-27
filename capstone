@@ -199,11 +199,9 @@ AWS_SES_ACCESS_KEY_ID = 'your-access-key-id'
 AWS_SES_SECRET_ACCESS_KEY = 'access-key'
 AWS_SES_FROM_EMAIL_ADDRESS = 'your-email';
 
-
-
 CREATE OR REPLACE TASK my_task
-WAREHOUSE = my_warehouse
-SCHEDULE = 'USING CRON 0 0 * * *' -- Every 24 hours at midnight
+WAREHOUSE = 'COMPUTE_WH'
+SCHEDULE = 'USING CRON 0 0 * * * UTC' -- Every 24 hours at midnight
 AS
 CALL my_alert();
 
