@@ -176,22 +176,19 @@ select * from patient_data;
 
 -----------------------------------------------------------------------------------------------------Monitoring and Alerting-------------------------------------------------------------
 
-
-
-
-
 CREATE OR REPLACE ALERT my_alert
 WAREHOUSE = 'COMPUTE_WH'
-SCHEDULE = 'USING CRON 0 0 * * *' -- Every 24 hour
-AS
-SELECT SYSTEM$SEND_EMAIL(
-    'my_email_integration',
-    'recipient@example.com',
-    'Materialized View Alert',
-    'The materialized view contains the care cap status No Care Gap.'
-)
-FROM care_gap_view
-WHERE status = 'No Care Gap';
+SCHEDULE = 'USING CRON 0 0 * * * UTC' -- Every 24 hour
+
+IF( EXISTS(
+SELECT count(*) from care_gap_view  WHERE  status = 'No Care Gap'))
+THEN
+CALL SYSTEM$SEND_EMAIL (
+'MY_EMAIL_INTEGRATION',
+'test@example.com',
+'Email Alert: Care gap alert',
+'The materialized view contains the care cap status No Care Gap.'
+);
 
 CREATE OR REPLACE NOTIFICATION INTEGRATION my_email_integration
 TYPE = EMAIL
